@@ -1,0 +1,6 @@
+/.venv_ssd
+/checkpoint
+/test
+/test_val
+/tmp
+/__pycache__

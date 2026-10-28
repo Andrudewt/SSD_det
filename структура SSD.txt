@@ -1,0 +1,40 @@
+
+main()
+
+├── Dataset()                      → Dataset
+│   └── __getitem__()              → (img [1,300,300], boxes [N,4], labels [N])
+│       └── SSDAugmentation()      → resize/flip/norm [0,1] и [-1,1]
+│
+├── DataLoader(collate_fn)         → (images [B,1,300,300], targets list[B])
+│
+│
+├── SSDMobileNet()                 → модель
+│   ├── MobileNetBackbone.forward  → 6 карт признаков
+│   └── SSDHead × 6                → (loc [B,8732,4], conf [B,8732,num_classes])
+│
+├── SSDTrainer.fit() ── по эпохам ── train_epoch()
+│   ├── prepare_targets() → match() → IoU/point_form/encode
+│   │                               → (loc_t [B,8732,4], conf_t [B,8732])   # conf_t метка t_класса
+│   └── MultiBoxLoss.forward()
+            Args:
+                loc_preds:   [batch, num_priors, 4] — предсказанные смещения
+                conf_preds:  [batch, num_priors, num_classes] — логиты классов
+                loc_targets: [batch, num_priors, 4] — целевые смещения
+                conf_targets:[batch, num_priors] — целевые метки (0 = background)
+
+                                    → (loc_loss, conf_loss) скаляры
+│
+├── evaluate_map()                  → float mAP@0.5
+│   └── Detector.detect()
+            Args:
+                loc_preds:  [batch, 8732, 4] — предсказанные смещения
+                conf_preds: [batch, 8732, num_classes] — логиты классов
+                conf_thresh: порог уверенности (если None, используется cfg.CONF_THRESH)
+                nms_thresh: порог IoU для NMS (если None, используется cfg.NMS_THRESH)
+            Returns:
+                list длиной batch: каждый элемент — [N, 6] тензор
+                    [x1, y1, x2, y2, score, class_id]
+                    Если детекций нет — [1, 6] из нулей (padding)
+
+                                   → list[B] Tensor [N,6]
+└── visualize_detections()         → matplotlib-фигура
